@@ -1,0 +1,37 @@
+
+# ==========================================
+# PER FULANDIA - BACKEND
+# Reglas generales para todos los servicios
+# ==========================================
+
+# Visual Studio Code
+.vscode/
+
+# Java y Maven
+**/target/
+*.class
+*.log
+
+# Bases de datos locales H2
+**/data/
+*.mv.db
+*.trace.db
+*.h2.db
+
+# Variables de entorno y configuraciones privadas
+.env
+.env.*
+!.env.example
+**/application-local.properties
+**/application-local.yml
+**/application-local.yaml
+**/application-secret.properties
+**/application-secrets.properties
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.bak
