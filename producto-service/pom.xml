@@ -1,35 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.2</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>cl.duoc.perfulandia</groupId>
 	<artifactId>producto-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<name />
+	<description />
+	<url />
 	<licenses>
-		<license/>
+		<license />
 	</licenses>
 	<developers>
-		<developer/>
+		<developer />
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection />
+		<developerConnection />
+		<tag />
+		<url />
 	</scm>
+
 	<properties>
+		<!-- Version de Java utilizada por Perfulandia -->
 		<java.version>21</java.version>
+
+		<!-- Version de Spring Cloud compatible con Spring Boot 4.1.x -->
+		<spring-cloud.version>2025.1.5</spring-cloud.version>
 	</properties>
+
+	<!-- =====================================================
+     SPRING CLOUD - GESTION DE DEPENDENCIAS
+
+     Permite utilizar versiones compatibles de las
+     bibliotecas de Spring Cloud, como Eureka Client
+     y LoadBalancer, sin escribir manualmente la
+     version de cada dependencia.
+     ===================================================== -->
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
+		<!-- ============================================
+         EUREKA CLIENT
+         Permite que producto-service se registre
+         automaticamente en Eureka Server.
+         Asi, otros microservicios podran encontrar
+         Productos utilizando su nombre.
+         ============================================ -->
+
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-h2console</artifactId>
