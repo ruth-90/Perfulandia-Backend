@@ -1,6 +1,7 @@
 
 package cl.duoc.perfulandia.usuario.model;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -40,6 +41,11 @@ public class Usuario {
     // NOMBRE COMPLETO
     @Column(nullable = false, length = 120)
     private String nombre;
+
+    @Column(length = 120)
+    private String apellidos;
+
+    private LocalDate fechaNacimiento;
 
     // CORREO ELECTRÓNICO
     @Column(nullable = false, unique = true, length = 150)
@@ -81,6 +87,7 @@ public class Usuario {
     // ROLES DISPONIBLES
     public enum RolUsuario {
         CLIENTE,
+        VENDEDOR,
         ADMINISTRADOR
     }
 }

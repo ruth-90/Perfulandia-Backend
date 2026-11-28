@@ -44,6 +44,9 @@ public class Pedido {
     @Column(nullable = false)
     private String nombreEntrega;
 
+    @Column(length = 150)
+    private String correoEntrega;
+
     @Column(nullable = false)
     private String telefono;
 
@@ -127,6 +130,14 @@ public class Pedido {
 
     public void setNombreEntrega(String nombreEntrega) {
         this.nombreEntrega = nombreEntrega;
+    }
+
+    public void setCorreoEntrega(String correoEntrega) {
+        this.correoEntrega = correoEntrega;
+    }
+
+    public String getCorreoEntrega() {
+        return correoEntrega;
     }
 
     public String getTelefono() {

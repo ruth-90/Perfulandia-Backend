@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import cl.duoc.perfulandia.producto.model.Producto;
 import cl.duoc.perfulandia.producto.repository.ProductoRepository;
@@ -15,6 +16,7 @@ import cl.duoc.perfulandia.producto.repository.ProductoRepository;
 
 // Configuración para cargar los perfumes iniciales de Perfulandia.
 @Configuration
+@Profile("dev")
 public class DatosInicialesConfig {
 
 

@@ -5,9 +5,12 @@ import cl.duoc.perfulandia.usuario.security.JwtFilter;
 
 import jakarta.servlet.DispatcherType;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,6 +28,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
+    FilterRegistrationBean<JwtFilter> jwtFilterRegistration(JwtFilter filter) {
+        FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+
+    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtFilter jwtFilter) throws Exception {
@@ -33,6 +44,7 @@ public class SecurityConfig {
 
                 // DESACTIVAR CSRF PARA LA API REST CON JWT
                 .csrf(csrf -> csrf.disable())
+                .exceptionHandling(errors -> errors.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 
                 // NO GUARDAR SESIONES EN EL SERVIDOR
                 .sessionManagement(session -> session
@@ -58,6 +70,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/login")
                         .permitAll()
 
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**")
+                        .permitAll()
+
                         // CONSOLA H2 SOLO PARA DESARROLLO LOCAL
                         .requestMatchers(
                                 "/h2-console",
@@ -67,8 +82,7 @@ public class SecurityConfig {
                         // SOLO LOS ADMINISTRADORES PODRAN CONSULTAR
                         // LA LISTA DE USUARIOS DE PERFULANDIA
                         .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/v1/admin/usuarios")
+                                "/api/v1/admin/usuarios", "/api/v1/admin/usuarios/**")
                         .hasRole("ADMINISTRADOR")
 
                         // LAS DEMAS RUTAS REQUIEREN AUTENTICACION

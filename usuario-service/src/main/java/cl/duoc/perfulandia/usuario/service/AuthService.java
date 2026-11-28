@@ -74,8 +74,9 @@ public class AuthService {
             );
         }
 
-        // GENERAR TOKEN JWT CON CORREO Y ROL
+        // GENERAR TOKEN JWT CON ID, CORREO Y ROL
         String token = jwtService.generar(
+                usuario.getId(),
                 usuario.getCorreo(),
                 usuario.getRol().name()
         );

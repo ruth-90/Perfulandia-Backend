@@ -1,6 +1,8 @@
 
 package cl.duoc.perfulandia.producto.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -66,6 +68,7 @@ public class ProductoController {
 
     // 3. CREAR PRODUCTO
     // POST http://localhost:8081/api/v1/productos
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     public ResponseEntity<ProductoResponse> crearProducto(
             @Valid @RequestBody ProductoCreateRequest request) {
@@ -81,6 +84,7 @@ public class ProductoController {
 
     // 4. ACTUALIZAR PRODUCTO
     // PUT http://localhost:8081/api/v1/productos/1
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponse> actualizarProducto(
             @PathVariable Long id,
@@ -95,6 +99,7 @@ public class ProductoController {
 
     // 5. ELIMINAR PRODUCTO
     // DELETE http://localhost:8081/api/v1/productos/1
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(
             @PathVariable Long id) {

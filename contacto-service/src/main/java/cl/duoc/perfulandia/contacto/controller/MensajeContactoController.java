@@ -1,6 +1,8 @@
 
 package cl.duoc.perfulandia.contacto.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +72,7 @@ public class MensajeContactoController {
     // GET - LISTAR TODOS LOS MENSAJES
     // =========================================
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     public ResponseEntity<List<MensajeContactoResponse>> listarMensajes() {
 
@@ -82,6 +85,7 @@ public class MensajeContactoController {
     // GET - CONSULTAR UN MENSAJE POR ID
     // =========================================
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
     public ResponseEntity<MensajeContactoResponse> obtenerMensaje(
             @PathVariable Long id
@@ -96,6 +100,7 @@ public class MensajeContactoController {
     // PATCH - MARCAR MENSAJE COMO RESPONDIDO
     // =========================================
 
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<MensajeContactoResponse> marcarRespondido(
             @PathVariable Long id
@@ -110,6 +115,7 @@ public class MensajeContactoController {
     // DELETE - ELIMINAR UN MENSAJE
     // =========================================
 
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarMensaje(
             @PathVariable Long id

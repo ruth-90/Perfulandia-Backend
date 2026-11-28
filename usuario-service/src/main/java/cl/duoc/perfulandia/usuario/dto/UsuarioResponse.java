@@ -1,6 +1,7 @@
 
 package cl.duoc.perfulandia.usuario.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import cl.duoc.perfulandia.usuario.model.Usuario.RolUsuario;
@@ -32,7 +33,9 @@ public record UsuarioResponse(
         boolean activo,
 
         // FECHA DE REGISTRO
-        LocalDateTime fechaRegistro
+        LocalDateTime fechaRegistro,
+        String apellidos,
+        LocalDate fechaNacimiento
 
 ) {
 }

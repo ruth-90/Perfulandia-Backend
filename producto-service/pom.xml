@@ -4,14 +4,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.2</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<groupId>cl.duoc.perfulandia</groupId>
+		<artifactId>perfulandia-backend</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
 	</parent>
-	<groupId>cl.duoc.perfulandia</groupId>
 	<artifactId>producto-service</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<name />
 	<description />
 	<url />
@@ -28,13 +25,6 @@
 		<url />
 	</scm>
 
-	<properties>
-		<!-- Version de Java utilizada por Perfulandia -->
-		<java.version>21</java.version>
-
-		<!-- Version de Spring Cloud compatible con Spring Boot 4.1.x -->
-		<spring-cloud.version>2025.1.5</spring-cloud.version>
-	</properties>
 
 	<!-- =====================================================
      SPRING CLOUD - GESTION DE DEPENDENCIAS
@@ -45,19 +35,18 @@
      version de cada dependencia.
      ===================================================== -->
 
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>${spring-cloud.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>cl.duoc.perfulandia</groupId>
+			<artifactId>seguridad-jwt</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<!-- ============================================
          EUREKA CLIENT
          Permite que producto-service se registre
