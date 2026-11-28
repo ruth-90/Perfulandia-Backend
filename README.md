@@ -6,11 +6,13 @@ El ejemplo del profesor separa usuarios y productos y usa Axios con JWT para las
 
 El POM raíz centraliza Java 21, Spring Boot 4.1.2, Spring Cloud 2025.1.5 y las versiones de las bibliotecas compartidas. Desde la raíz, ejecuta `.\eureka-server\mvnw.cmd -f pom.xml package` para compilar, probar y empaquetar todos los servicios. El repositorio incluye una biblioteca interna de validación JWT que se construye en el mismo reactor Maven.
 
+Si Maven no encuentra `seguridad-jwt:0.0.1-SNAPSHOT` al compilar Producto desde su carpeta, instala la biblioteca y su POM padre desde la raíz con `.\producto-service\mvnw.cmd -pl seguridad-jwt -am install`. Después puedes ejecutar `.\mvnw.cmd -U clean compile` desde `producto-service`.
+
 Ejecuta cada JAR desde la carpeta de su módulo con `java -jar target/<servicio>-0.0.1-SNAPSHOT.jar`. Inicia `eureka-server` (8761), luego `producto-service` (8081), `usuario-service` (8082), `pedido-service` (8083), `contacto-service` (8084) y `api-gateway` (8080). Usar cada carpeta como directorio de trabajo conserva la ubicación de sus archivos H2.
 
 La URL base de Axios para el Gateway es `http://localhost:8080/api/v1`. CORS permite React en localhost y 127.0.0.1 por el puerto 5173. Define `FRONTEND_ORIGINS` en el Gateway para configurar otro origen.
 
-Pedidos consulta Productos por HTTP en el puerto 8081. En Docker, usa `PRODUCTOS_URL` con la dirección accesible desde el contenedor. Usuarios y Pedidos deben compartir la misma clave JWT.
+Pedidos consulta Productos por HTTP en el puerto 8081. En Docker, usa `PRODUCTOS_URL` con la dirección accesible desde el contenedor. Comparte la misma clave JWT entre Usuarios, Productos, Pedidos y Contacto.
 
 Para crear la cuenta administrativa de demostración (`adminprueba@perfulandia.cl`), define `PERFULANDIA_ADMIN_ENABLED=true` y `PERFULANDIA_ADMIN_PASSWORD` antes de iniciar Usuarios. Para crear `vendedorprueba@perfulandia.cl`, define `PERFULANDIA_VENDEDOR_PASSWORD`. El registro público crea cuentas de cliente.
 
@@ -47,11 +49,18 @@ El vendedor consulta precio y stock de los productos y ve las líneas, cantidade
 | Mantenedor de usuarios | `GET /admin/usuarios`, `POST /admin/usuarios`, `GET /admin/usuarios/{id}`, `PUT /admin/usuarios/{id}`, `DELETE /admin/usuarios/{id}` | JWT de `ADMINISTRADOR`. La edición y eliminación se aplican a clientes |
 | Compra | `POST /pedidos` | JWT de `CLIENTE` o `ADMINISTRADOR`. Envía `items`, `entrega` y `metodoPago` |
 | Historial | `GET /pedidos/mis-pedidos`, `GET /pedidos/{id}`, `GET /pedidos` | El cliente consulta sus pedidos. Administrador y vendedor pueden consultar el listado general y sus detalles |
+| Confirmación de inventario | `PUT /pedidos/{id}/confirmacion` | JWT de `ADMINISTRADOR`. Sin cuerpo. Devuelve el pedido en estado `CONFIRMADO` |
 
 Envía `Authorization: Bearer <token>` para los recursos privados. La fecha de nacimiento usa `AAAA-MM-DD`. Las contraseñas nuevas requieren 8 a 72 caracteres con un máximo de 72 bytes. Omite `password` al editar para conservar la anterior.
 
-Para crear un pedido, mapea cada elemento del carrito a `{ productoId, cantidad }`. En `entrega` envía `nombre`, `telefono`, `region`, `comuna`, `direccion` y el `correo` opcional. El servidor calcula el subtotal y cobra $3.990 de despacho para subtotales bajo $40.990. La respuesta devuelve el identificador, el estado, la fecha, los artículos, la entrega y los importes. El pedido queda `PENDIENTE`. El stock se verifica al crear el pedido. El cobro y la reserva de inventario quedan fuera de ese flujo.
+Para crear un pedido, mapea cada elemento del carrito a `{ productoId, cantidad }`. En `entrega` envía `nombre`, `telefono`, `region`, `comuna`, `direccion` y el `correo` opcional. El servidor calcula el subtotal con precios expresados en pesos chilenos enteros y cobra $3.990 de despacho para subtotales bajo $40.990. La respuesta devuelve el identificador, el estado, la fecha, los artículos, la entrega y los importes. El pedido queda `PENDIENTE`. Al confirmarlo, Productos descuenta todas las líneas en una transacción. Si falta inventario, la confirmación devuelve HTTP 409. Si se pierde la respuesta, repetir la confirmación con el mismo ID permite recuperar el resultado sin descontar stock dos veces. La confirmación registra el movimiento de inventario. El procesamiento de pagos queda fuera de este flujo.
+
+## Postman
+
+Importa la [colección](postman/Perfulandia.postman_collection.json) y el [entorno local](postman/Perfulandia.local.postman_environment.json). Selecciona el entorno y completa `password_admin`, `correo_cliente` y `password_cliente`. Usa la cuenta administrativa de demostración descrita arriba y un cliente existente o creado mediante `POST /api/v1/usuarios/registro`. Las solicitudes de login guardan los tokens y las creaciones guardan los IDs en el entorno activo.
+
+Ejecuta las carpetas en orden. La colección comprueba autenticación, permisos, CRUD de un producto temporal, validación de stock y confirmación repetida. El último grupo borra el producto temporal y el pedido de prueba permanece en H2. Para usar el Gateway, cambia las tres variables `base_url_*` a `http://localhost:8080`.
 
 ## Estado de Perfulandia React
 
-El ZIP ya usa HTTP para Productos y Contacto por sus puertos directos. Login, registro, mantenedor de usuarios y confirmación de compra todavía funcionan con datos locales. Esas pantallas deben llamar a las rutas anteriores. Al migrar el acceso, usa los roles `CLIENTE`, `VENDEDOR` y `ADMINISTRADOR` de la respuesta del servidor. Muestra al vendedor los accesos de consulta de Productos y Órdenes. Confirma la compra en pantalla al recibir el pedido de la API.
+En la carpeta hermana `Perfulandia-React`, el catálogo, el registro, el login y la creación de pedidos usan el Gateway. La URL predeterminada es `http://localhost:8080/api/v1` y puede configurarse mediante `VITE_API_URL`. El frontend muestra el identificador, el total y el estado que devuelve Pedidos. Contacto conserva su conexión directa y el mantenedor de usuarios sigue usando datos locales.

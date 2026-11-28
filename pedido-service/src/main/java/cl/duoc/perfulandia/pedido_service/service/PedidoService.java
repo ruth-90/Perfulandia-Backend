@@ -3,17 +3,24 @@ package cl.duoc.perfulandia.pedido_service.service;
 import cl.duoc.perfulandia.pedido_service.dto.CrearPedidoRequest;
 import cl.duoc.perfulandia.pedido_service.dto.PedidoResponse;
 import cl.duoc.perfulandia.pedido_service.model.DetallePedido;
+import cl.duoc.perfulandia.pedido_service.model.EstadoPedido;
 import cl.duoc.perfulandia.pedido_service.model.Pedido;
 import cl.duoc.perfulandia.pedido_service.repository.PedidoRepository;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +59,7 @@ public class PedidoService {
     private record ProductoInfo(
             Long id,
             String nombre,
-            Long precio,
+            BigDecimal precio,
             Integer stock
     ) {}
 
@@ -70,7 +77,7 @@ public class PedidoService {
                     || producto.nombre() == null
                     || producto.nombre().isBlank()
                     || producto.precio() == null
-                    || producto.precio() < 0
+                    || producto.precio().signum() < 0
                     || producto.stock() == null
                     || producto.stock() < 0) {
 
@@ -187,9 +194,17 @@ public class PedidoService {
                 );
             }
 
+            long precioUnitario;
+            try {
+                precioUnitario = producto.precio().longValueExact();
+            } catch (ArithmeticException error) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "El precio del producto " + producto.id() + " debe expresarse en pesos chilenos enteros", error);
+            }
+
             try {
                 long subtotal = Math.multiplyExact(
-                        producto.precio(),
+                        precioUnitario,
                         item.cantidad().longValue()
                 );
 
@@ -198,7 +213,7 @@ public class PedidoService {
                 detalle.setProductoId(producto.id());
                 detalle.setNombre(producto.nombre());
                 detalle.setCantidad(item.cantidad());
-                detalle.setPrecioUnitario(producto.precio());
+                detalle.setPrecioUnitario(precioUnitario);
                 detalle.setSubtotal(subtotal);
 
                 // Asociar el detalle al pedido
@@ -237,6 +252,42 @@ public class PedidoService {
         Pedido guardado = pedidoRepository.save(pedido);
 
         return PedidoResponse.desdeEntidad(guardado);
+    }
+
+    @Transactional
+    public PedidoResponse confirmarPedido(Long id, String authorization) {
+        Pedido pedido = pedidoRepository.buscarParaConfirmar(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+        if (pedido.getEstado() == EstadoPedido.CONFIRMADO) {
+            return PedidoResponse.desdeEntidad(pedido);
+        }
+        if (pedido.getEstado() != EstadoPedido.PENDIENTE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El pedido no está pendiente");
+        }
+
+        // La clave se conserva incluso si Productos confirma y se pierde la respuesta.
+        String identidad = pedido.getId() + ":" + pedido.getFechaCreacion().toInstant();
+        UUID operacion = UUID.nameUUIDFromBytes(identidad.getBytes(StandardCharsets.UTF_8));
+        var cantidades = pedido.getDetalles().stream().collect(
+                Collectors.toMap(DetallePedido::getProductoId, DetallePedido::getCantidad));
+        try {
+            productosApi.put()
+                    .uri("/api/v1/productos/stock/pedidos/{operacion}", operacion)
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(cantidades)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException error) {
+            if (error.getStatusCode().value() == 409 || error.getStatusCode().value() == 404) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "No hay inventario disponible para confirmar el pedido", error);
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Productos no pudo confirmar el descuento", error);
+        } catch (ResourceAccessException error) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Reintenta la confirmación del mismo pedido", error);
+        }
+        pedido.setEstado(EstadoPedido.CONFIRMADO);
+        return PedidoResponse.desdeEntidad(pedido);
     }
 
     // Consultar los pedidos del cliente autenticado

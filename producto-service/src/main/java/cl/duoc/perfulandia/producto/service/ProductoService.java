@@ -2,32 +2,38 @@
 package cl.duoc.perfulandia.producto.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import jakarta.persistence.EntityManager;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import cl.duoc.perfulandia.producto.exception.ResourceNotFoundException;
-import lombok.RequiredArgsConstructor;
+import org.springframework.web.server.ResponseStatusException;
 
+import cl.duoc.perfulandia.producto.exception.ResourceNotFoundException;
 import cl.duoc.perfulandia.producto.dto.ProductoCreateRequest;
 import cl.duoc.perfulandia.producto.dto.ProductoUpdateRequest;
 import cl.duoc.perfulandia.producto.dto.ProductoResponse;
 import cl.duoc.perfulandia.producto.model.Producto;
+import cl.duoc.perfulandia.producto.model.DescuentoPedido;
 import cl.duoc.perfulandia.producto.repository.ProductoRepository;
 
+import lombok.RequiredArgsConstructor;
 
-// Indica que esta clase contiene la lógica de negocio.
+// PERFULANDIA - SERVICIO DE PRODUCTOS
+// Contiene la logica de negocio del microservicio PRODUCTO.
+
 @Service
-
-// Lombok genera el constructor para inyectar el repositorio.
 @RequiredArgsConstructor
 public class ProductoService {
 
-    // Permite acceder a la base de datos H2.
+    // Repositorio para acceder a la base de datos.
     private final ProductoRepository productoRepository;
+    private final EntityManager entityManager;
 
 
     // 1. LISTAR TODOS LOS PRODUCTOS
-    // Solo consulta información, no modifica la base de datos.
     @Transactional(readOnly = true)
     public List<ProductoResponse> listarProductos() {
 
@@ -39,7 +45,6 @@ public class ProductoService {
 
 
     // 2. BUSCAR PRODUCTO POR ID
-    // Busca el producto y devuelve sus datos como DTO.
     @Transactional(readOnly = true)
     public ProductoResponse buscarPorId(Long id) {
 
@@ -50,15 +55,12 @@ public class ProductoService {
 
 
     // 3. CREAR PRODUCTO
-    // Recibe los datos desde React y registra un nuevo perfume.
     @Transactional
-    public ProductoResponse crearProducto(ProductoCreateRequest request) {
+    public ProductoResponse crearProducto(
+            ProductoCreateRequest request) {
 
-        // Creamos una entidad Producto sin asignarle un ID.
-        // La base de datos generará el ID automáticamente.
         Producto producto = new Producto();
 
-        // Copiamos los datos recibidos en el DTO.
         producto.setNombre(request.nombre().trim());
         producto.setCategoria(request.categoria());
         producto.setPrecio(request.precio());
@@ -66,25 +68,21 @@ public class ProductoService {
         producto.setImagen(request.imagen());
         producto.setDescripcion(request.descripcion());
 
-        // Guardamos el perfume en la base de datos H2.
-        Producto productoGuardado = productoRepository.save(producto);
+        Producto productoGuardado =
+                productoRepository.save(producto);
 
-        // Convertimos la entidad guardada en un DTO de respuesta.
         return convertirAResponse(productoGuardado);
     }
 
 
     // 4. ACTUALIZAR PRODUCTO
-    // Busca un perfume existente y modifica sus datos.
     @Transactional
     public ProductoResponse actualizarProducto(
             Long id,
             ProductoUpdateRequest request) {
 
-        // Primero comprobamos que el perfume exista.
         Producto productoExistente = buscarEntidadPorId(id);
 
-        // Actualizamos sus atributos con los datos del DTO.
         productoExistente.setNombre(request.nombre().trim());
         productoExistente.setCategoria(request.categoria());
         productoExistente.setPrecio(request.precio());
@@ -92,17 +90,14 @@ public class ProductoService {
         productoExistente.setImagen(request.imagen());
         productoExistente.setDescripcion(request.descripcion());
 
-        // Guardamos los cambios dentro de la transacción.
         Producto productoActualizado =
                 productoRepository.save(productoExistente);
 
-        // Devolvemos la información actualizada a React.
         return convertirAResponse(productoActualizado);
     }
 
 
     // 5. ELIMINAR PRODUCTO
-    // Elimina un perfume después de comprobar su existencia.
     @Transactional
     public void eliminarProducto(Long id) {
 
@@ -112,21 +107,67 @@ public class ProductoService {
     }
 
 
-    // 6. BUSCAR ENTIDAD POR ID
-    // Método auxiliar para obtener la entidad desde H2.
-    // Si no existe, lanza una excepción HTTP 404
-    private Producto buscarEntidadPorId(Long id) {
+    // 6. DESCONTAR STOCK DE UN PRODUCTO
+    // Este metodo permite descontar inventario.
+    @Transactional
+    public ProductoResponse descontarStock(
+            Long id,
+            Integer cantidad) {
 
-        return productoRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No se encontró el producto con ID: " + id
-                ));
+        if (cantidad == null || cantidad <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad debe ser mayor que cero");
+        }
+        aplicarDescuento(id, cantidad);
+        return convertirAResponse(buscarEntidadPorId(id));
+    }
+
+    @Transactional
+    public void descontarStockPedido(UUID operacion, Map<Long, Integer> cantidades) {
+        if (cantidades == null || cantidades.isEmpty() || cantidades.entrySet().stream()
+                .anyMatch(linea -> linea.getKey() == null || linea.getKey() <= 0
+                        || linea.getValue() == null || linea.getValue() <= 0)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Productos o cantidades inválidos");
+        }
+        var lineas = cantidades.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
+        String contenido = lineas.toString();
+        DescuentoPedido registrado = entityManager.find(DescuentoPedido.class, operacion);
+        if (registrado != null) {
+            if (!registrado.getContenido().equals(contenido)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "El descuento registrado tiene otros productos o cantidades");
+            }
+            return;
+        }
+        // La clave única evita aplicar dos veces la operación incluso ante solicitudes simultáneas.
+        entityManager.persist(new DescuentoPedido(operacion, contenido));
+        entityManager.flush();
+        lineas.forEach(linea -> aplicarDescuento(linea.getKey(), linea.getValue()));
+    }
+
+    private void aplicarDescuento(Long id, Integer cantidad) {
+        if (productoRepository.descontarStock(id, cantidad) == 0) {
+            buscarEntidadPorId(id);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Stock insuficiente para el producto " + id);
+        }
     }
 
 
-    // 7. CONVERTIR ENTIDAD A DTO
-    // Transforma un Producto de H2 en un ProductoResponse.
-    private ProductoResponse convertirAResponse(Producto producto) {
+    // 7. BUSCAR ENTIDAD POR ID
+    // Si el producto no existe, lanzar excepcion.
+    private Producto buscarEntidadPorId(Long id) {
+
+        return productoRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No se encontro el producto con ID: " + id
+                        )
+                );
+    }
+
+
+    // 8. CONVERTIR ENTIDAD A DTO
+    // Convierte un Producto en ProductoResponse.
+    private ProductoResponse convertirAResponse(
+            Producto producto) {
 
         return new ProductoResponse(
                 producto.getId(),

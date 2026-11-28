@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/pedidos").hasAnyRole("ADMINISTRADOR", "VENDEDOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/pedidos").hasAnyRole("CLIENTE", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/pedidos/{id}/confirmacion").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/pedidos/mis-pedidos").hasAnyRole("CLIENTE", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/pedidos/{id}")
                                 .hasAnyRole("ADMINISTRADOR", "VENDEDOR", "CLIENTE")
