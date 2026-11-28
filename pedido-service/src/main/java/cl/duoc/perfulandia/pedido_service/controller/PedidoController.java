@@ -1,6 +1,8 @@
 
 package cl.duoc.perfulandia.pedido_service.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import cl.duoc.perfulandia.pedido_service.dto.CrearPedidoRequest;
 import cl.duoc.perfulandia.pedido_service.dto.PedidoResponse;
 import cl.duoc.perfulandia.pedido_service.service.PedidoService;
@@ -17,47 +19,33 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@SecurityRequirement(name = "bearerAuth")
 @RequestMapping("/api/v1/pedidos")
 public class PedidoController {
 
     private final PedidoService pedidoService;
 
-    // Conectar el controlador con la capa Service
+    // Conectar el controlador con el servicio
     public PedidoController(PedidoService pedidoService) {
         this.pedidoService = pedidoService;
     }
 
-    // Obtener el ID del usuario validado por el backend
+    // Obtener el ID del usuario autenticado
     private Long obtenerUsuarioId(HttpServletRequest request) {
 
         Object valor = request.getAttribute("usuarioId");
 
         if (!(valor instanceof Long usuarioId) || usuarioId <= 0) {
             throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Debes iniciar sesion"
+                    HttpStatus.UNAUTHORIZED,
+                    "Debes iniciar sesion"
             );
         }
 
         return usuarioId;
     }
 
-    // Verificar permisos de administrador
-    private void verificarAdmin(HttpServletRequest request) {
-
-        obtenerUsuarioId(request);
-
-        Object rol = request.getAttribute("rol");
-
-        if (!"ADMIN".equals(rol)) {
-            throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Se requieren permisos de administrador"
-            );
-        }
-    }
-
-    // POST: crear un pedido
+    // POST - Crear un pedido
     @PostMapping
     public ResponseEntity<PedidoResponse> crear(
             @Valid @RequestBody CrearPedidoRequest datos,
@@ -66,16 +54,16 @@ public class PedidoController {
         Long usuarioId = obtenerUsuarioId(request);
 
         PedidoResponse pedido = pedidoService.crearPedido(
-            datos,
-            usuarioId
+                datos,
+                usuarioId
         );
 
         return ResponseEntity
-            .created(URI.create("/api/v1/pedidos/" + pedido.id()))
-            .body(pedido);
+                .created(URI.create("/api/v1/pedidos/" + pedido.id()))
+                .body(pedido);
     }
 
-    // GET: consultar mis pedidos
+    // GET - Consultar mis pedidos
     @GetMapping("/mis-pedidos")
     public List<PedidoResponse> misPedidos(
             HttpServletRequest request) {
@@ -85,7 +73,7 @@ public class PedidoController {
         return pedidoService.misPedidos(usuarioId);
     }
 
-    // GET: consultar un pedido específico
+    // GET - Consultar un pedido por ID
     @GetMapping("/{id}")
     public PedidoResponse buscar(
             @PathVariable Long id,
@@ -93,17 +81,14 @@ public class PedidoController {
 
         Long usuarioId = obtenerUsuarioId(request);
 
-        return pedidoService.buscarMiPedido(id, usuarioId);
+        String rol = (String) request.getAttribute("rol");
+        return "ADMINISTRADOR".equals(rol) || "VENDEDOR".equals(rol)
+                ? pedidoService.buscarPedido(id)
+                : pedidoService.buscarMiPedido(id, usuarioId);
     }
 
-    // GET: listar todos los pedidos (ADMIN)
     @GetMapping
-    public List<PedidoResponse> listarTodos(
-            HttpServletRequest request) {
-
-        verificarAdmin(request);
-
+    public List<PedidoResponse> listarTodos() {
         return pedidoService.listarTodos();
     }
 }
-    

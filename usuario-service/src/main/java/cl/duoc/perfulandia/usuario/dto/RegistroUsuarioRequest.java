@@ -1,6 +1,8 @@
 
 package cl.duoc.perfulandia.usuario.dto;
 
+import java.time.LocalDate;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -33,7 +35,6 @@ public record RegistroUsuarioRequest(
         // CONTRASEÑA EN TEXTO PLANO
         // SOLO SE RECIBE PARA GENERAR EL HASH
         // NUNCA SE GUARDA DIRECTAMENTE
-        @NotBlank(message = "La contraseña es obligatoria.")
         @Size(
                 min = 8,
                 max = 72,
@@ -52,7 +53,12 @@ public record RegistroUsuarioRequest(
         String region,
 
         @Size(max = 100)
-        String comuna
+        String comuna,
+
+        @Size(max = 120)
+        String apellidos,
+
+        LocalDate fechaNacimiento
 
 ) {
 }

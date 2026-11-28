@@ -51,7 +51,7 @@ public class JwtService {
     }
 
     // GENERAR TOKEN JWT
-    public String generar(String correo, String rol) {
+    public String generar(Long usuarioId,String correo, String rol) {
 
         Date ahora = new Date();
 
@@ -62,6 +62,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(correo)
                 .claim("role", rol)
+                .claim("usuarioId", usuarioId)
                 .issuedAt(ahora)
                 .expiration(vencimiento)
                 .signWith(key)

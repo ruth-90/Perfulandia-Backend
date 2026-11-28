@@ -2,6 +2,7 @@
 package cl.duoc.perfulandia.pedido_service.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -24,6 +25,7 @@ public record CrearPedidoRequest(
 
     // Método de pago elegido
     @NotBlank(message = "El método de pago es obligatorio")
+    @Size(max = 100)
     String metodoPago
 
 ) {
@@ -59,7 +61,12 @@ public record CrearPedidoRequest(
         String comuna,
 
         @NotBlank(message = "La dirección es obligatoria")
-        String direccion
+        @Size(max = 255)
+        String direccion,
+
+        @Email
+        @Size(max = 150)
+        String correo
 
     ) {
     }

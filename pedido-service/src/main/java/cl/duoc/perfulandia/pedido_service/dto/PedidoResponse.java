@@ -5,6 +5,7 @@ import cl.duoc.perfulandia.pedido_service.model.Pedido;
 
 import cl.duoc.perfulandia.pedido_service.model.EstadoPedido;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 // DTO que devuelve los datos del pedido a React
@@ -26,7 +27,11 @@ public record PedidoResponse(
     Long costoEnvio,
 
     // Total de la compra
-    Long total
+    Long total,
+    Long subtotal,
+    OffsetDateTime fechaCreacion,
+    String metodoPago,
+    CrearPedidoRequest.EntregaRequest entrega
 
 ) {
 
@@ -68,7 +73,12 @@ public record PedidoResponse(
             pedido.getEstado(),
             items,
             pedido.getCostoEnvio(),
-            pedido.getTotal()
+            pedido.getTotal(),
+            pedido.getTotal() - pedido.getCostoEnvio(),
+            pedido.getFechaCreacion(),
+            pedido.getMetodoPago(),
+            new CrearPedidoRequest.EntregaRequest(pedido.getNombreEntrega(), pedido.getTelefono(),
+                    pedido.getRegion(), pedido.getComuna(), pedido.getDireccion(), pedido.getCorreoEntrega())
         );
     }
 }

@@ -1,10 +1,16 @@
 
 package cl.duoc.perfulandia.usuario.service;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Locale;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,81 +48,84 @@ public class UsuarioService {
             RegistroUsuarioRequest request
     ) {
 
-        // NORMALIZAR EL RUT Y EL CORREO
-        String rut = normalizarRut(request.rut());
-
-        String correo = request.correo()
-                .trim()
-                .toLowerCase(Locale.ROOT);
-
-        String nombre = request.nombre().trim();
-
-        // VALIDAR EL RUT CHILENO
-        if (!validarRut(rut)) {
-            throw new IllegalArgumentException(
-                    "El RUT ingresado no es válido."
-            );
+        if (request.password() == null || request.password().isBlank()) {
+            throw new IllegalArgumentException("La contraseña es obligatoria.");
         }
-
-        // COMPROBAR QUE EL RUT NO ESTÉ REGISTRADO
-        if (repository.existsByRut(rut)) {
-            throw new UsuarioDuplicadoException(
-                    "El RUT ya está registrado."
-            );
-        }
-
-        // COMPROBAR QUE EL CORREO NO ESTÉ REGISTRADO
-        if (repository.existsByCorreoIgnoreCase(correo)) {
-            throw new UsuarioDuplicadoException(
-                    "El correo ya está registrado."
-            );
-        }
-
-        // PREPARAR EL NUEVO USUARIO
         Usuario usuario = new Usuario();
+        aplicarDatos(usuario, request);
+        usuario.setFechaRegistro(LocalDateTime.now());
+        return convertirAResponse(repository.save(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listarUsuarios() {
+        return repository.findAll().stream().map(this::convertirAResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse buscarUsuario(Long id) {
+        return convertirAResponse(obtenerUsuario(id));
+    }
+
+    @Transactional
+    public UsuarioResponse actualizarCliente(Long id, RegistroUsuarioRequest request) {
+        Usuario usuario = obtenerCliente(id);
+        aplicarDatos(usuario, request);
+        return convertirAResponse(usuario);
+    }
+
+    @Transactional
+    public void eliminarCliente(Long id) {
+        repository.delete(obtenerCliente(id));
+    }
+
+    private Usuario obtenerUsuario(Long id) {
+        return repository.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado."));
+    }
+
+    private Usuario obtenerCliente(Long id) {
+        Usuario usuario = obtenerUsuario(id);
+        if (usuario.getRol() != RolUsuario.CLIENTE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "El mantenedor permite modificar cuentas de clientes.");
+        }
+        return usuario;
+    }
+
+    private void aplicarDatos(Usuario usuario, RegistroUsuarioRequest request) {
+        String rut = normalizarRut(request.rut());
+        String correo = request.correo().trim().toLowerCase(Locale.ROOT);
+        if (!validarRut(rut)) {
+            throw new IllegalArgumentException("El RUT ingresado no es válido.");
+        }
+        if (repository.findByRut(rut).filter(otro -> !otro.getId().equals(usuario.getId())).isPresent()) {
+            throw new UsuarioDuplicadoException("El RUT ya está registrado.");
+        }
+        if (repository.findByCorreoIgnoreCase(correo)
+                .filter(otro -> !otro.getId().equals(usuario.getId())).isPresent()) {
+            throw new UsuarioDuplicadoException("El correo ya está registrado.");
+        }
+        LocalDate nacimiento = request.fechaNacimiento();
+        if (nacimiento != null && nacimiento.isAfter(LocalDate.now(ZoneId.of("America/Santiago")).minusYears(18))) {
+            throw new IllegalArgumentException("El usuario debe tener 18 años o más.");
+        }
 
         usuario.setRut(rut);
-        usuario.setNombre(nombre);
         usuario.setCorreo(correo);
-
-        // PROTEGER LA CONTRASEÑA CON BCRYPT
-        usuario.setPasswordHash(
-                passwordEncoder.encode(request.password())
-        );
-
-        // DATOS OPCIONALES
-        usuario.setTelefono(
-                limpiarOpcional(request.telefono())
-        );
-
-        usuario.setDireccion(
-                limpiarOpcional(request.direccion())
-        );
-
-        usuario.setRegion(
-                limpiarOpcional(request.region())
-        );
-
-        usuario.setComuna(
-                limpiarOpcional(request.comuna())
-        );
-
-        // EL CLIENTE NO PUEDE ELEGIR SU ROL
-        usuario.setRol(RolUsuario.CLIENTE);
-
-        // CUENTA ACTIVA POR DEFECTO
-        usuario.setActivo(true);
-
-        // FECHA DEL REGISTRO
-        usuario.setFechaRegistro(
-                LocalDateTime.now()
-        );
-
-        // GUARDAR EN LA BASE DE DATOS
-        Usuario guardado = repository.save(usuario);
-
-        // DEVOLVER DATOS SIN CONTRASEÑA
-        return convertirAResponse(guardado);
+        usuario.setNombre(request.nombre().trim());
+        usuario.setApellidos(limpiarOpcional(request.apellidos()));
+        usuario.setFechaNacimiento(nacimiento);
+        usuario.setTelefono(limpiarOpcional(request.telefono()));
+        usuario.setDireccion(limpiarOpcional(request.direccion()));
+        usuario.setRegion(limpiarOpcional(request.region()));
+        usuario.setComuna(limpiarOpcional(request.comuna()));
+        if (request.password() != null) {
+            if (request.password().isBlank() || request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+                throw new IllegalArgumentException("Ingresa una contraseña válida de hasta 72 bytes.");
+            }
+            usuario.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
     }
 
     // =========================================
@@ -244,7 +253,9 @@ public class UsuarioService {
                 usuario.getComuna(),
                 usuario.getRol(),
                 usuario.isActivo(),
-                usuario.getFechaRegistro()
+                usuario.getFechaRegistro(),
+                usuario.getApellidos(),
+                usuario.getFechaNacimiento()
         );
     }
 

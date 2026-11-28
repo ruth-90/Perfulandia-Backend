@@ -6,6 +6,7 @@ import cl.duoc.perfulandia.pedido_service.model.DetallePedido;
 import cl.duoc.perfulandia.pedido_service.model.Pedido;
 import cl.duoc.perfulandia.pedido_service.repository.PedidoRepository;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -13,6 +14,7 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
@@ -37,7 +39,11 @@ public class PedidoService {
 
         this.pedidoRepository = pedidoRepository;
 
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(3));
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
         this.productosApi = RestClient.builder()
+                .requestFactory(requestFactory)
                 .baseUrl(productosUrl)
                 .build();
     }
@@ -138,6 +144,7 @@ public class PedidoService {
         var entrega = request.entrega();
 
         pedido.setNombreEntrega(entrega.nombre());
+        pedido.setCorreoEntrega(entrega.correo());
         pedido.setTelefono(entrega.telefono());
         pedido.setRegion(entrega.region());
         pedido.setComuna(entrega.comuna());
@@ -257,7 +264,12 @@ public class PedidoService {
         return PedidoResponse.desdeEntidad(pedido);
     }
 
-    // Listar todos los pedidos: solo para ADMIN
+    @Transactional(readOnly = true)
+    public PedidoResponse buscarPedido(Long id) {
+        return pedidoRepository.findById(id)
+                .map(PedidoResponse::desdeEntidad)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+    }
     @Transactional(readOnly = true)
     public List<PedidoResponse> listarTodos() {
 

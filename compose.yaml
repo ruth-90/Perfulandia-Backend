@@ -1,0 +1,76 @@
+x-profile: &profile
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+
+x-jwt: &jwt
+  <<: *profile
+  PERFULANDIA_JWT_SECRET: ${PERFULANDIA_JWT_SECRET:?Configura PERFULANDIA_JWT_SECRET}
+  EUREKA_URL: http://eureka-server:8761/eureka/
+  EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
+
+services:
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    ports:
+      - '127.0.0.1:8761:8761'
+    environment: *profile
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    depends_on: [eureka-server]
+    ports:
+      - '${GATEWAY_BIND_ADDRESS:-127.0.0.1}:8080:8080'
+    environment:
+      <<: *profile
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: 'true'
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+  producto-service:
+    build:
+      context: .
+      dockerfile: producto-service/Dockerfile
+    depends_on: [eureka-server]
+    environment:
+      <<: *jwt
+      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-false}
+    volumes:
+      - producto-service-data:/app/data
+  usuario-service:
+    build:
+      context: .
+      dockerfile: usuario-service/Dockerfile
+    depends_on: [eureka-server]
+    environment:
+      <<: *jwt
+      PERFULANDIA_ADMIN_ENABLED: ${PERFULANDIA_ADMIN_ENABLED:-false}
+      PERFULANDIA_ADMIN_PASSWORD: ${PERFULANDIA_ADMIN_PASSWORD:-}
+      PERFULANDIA_VENDEDOR_PASSWORD: ${PERFULANDIA_VENDEDOR_PASSWORD:-}
+    volumes:
+      - usuario-service-data:/app/data
+  pedido-service:
+    build:
+      context: .
+      dockerfile: pedido-service/Dockerfile
+    depends_on: [eureka-server, producto-service]
+    environment:
+      <<: *jwt
+      PRODUCTOS_URL: http://producto-service:8081
+    volumes:
+      - pedido-service-data:/app/data
+  contacto-service:
+    build:
+      context: .
+      dockerfile: contacto-service/Dockerfile
+    depends_on: [eureka-server]
+    environment:
+      <<: *jwt
+    volumes:
+      - contacto-service-data:/app/data
+
+volumes:
+  producto-service-data:
+  usuario-service-data:
+  pedido-service-data:
+  contacto-service-data:
