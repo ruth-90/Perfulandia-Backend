@@ -91,4 +91,9 @@ public class PedidoController {
     public List<PedidoResponse> listarTodos() {
         return pedidoService.listarTodos();
     }
+
+    @PutMapping("/{id}/confirmacion")
+    public PedidoResponse confirmar(@PathVariable Long id, @RequestHeader("Authorization") String authorization) {
+        return pedidoService.confirmarPedido(id, authorization);
+    }
 }

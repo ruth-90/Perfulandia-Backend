@@ -4,6 +4,8 @@ package cl.duoc.perfulandia.producto.controller;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +38,14 @@ import cl.duoc.perfulandia.producto.service.ProductoService;
 public class ProductoController {
 
     private final ProductoService productoService;
+
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/stock/pedidos/{operacion}")
+    public ResponseEntity<Void> descontarStockPedido(
+            @PathVariable UUID operacion, @RequestBody Map<Long, Integer> cantidades) {
+        productoService.descontarStockPedido(operacion, cantidades);
+        return ResponseEntity.noContent().build();
+    }
 
     // 1. LISTAR TODOS LOS PRODUCTOS
     @GetMapping

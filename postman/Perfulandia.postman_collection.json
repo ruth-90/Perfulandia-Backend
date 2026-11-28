@@ -1,0 +1,878 @@
+{
+  "info": {
+    "name": "Perfulandia · flujo local",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecuta en orden con Perfulandia local. Completa credenciales antes de iniciar. Los pedidos de prueba quedan en H2."
+  },
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_auth}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo_admin}}\",\n  \"password\": \"{{password_admin}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Rol admin\", () => pm.expect(pm.response.json().rol).to.eql(\"ADMINISTRADOR\"));",
+                  "if (pm.response.code < 300) pm.environment.set(\"token_admin\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login cliente",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_auth}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo_cliente}}\",\n  \"password\": \"{{password_cliente}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Rol cliente\", () => pm.expect(pm.response.json().rol).to.eql(\"CLIENTE\"));",
+                  "if (pm.response.code < 300) pm.environment.set(\"token_cliente\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validar token",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_auth}}/api/v1/auth/yo",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Autoridad de cliente\", () => pm.expect(pm.response.json().rol).to.eql(\"ROLE_CLIENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin token",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_auth}}/api/v1/auth/yo",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Productos",
+      "item": [
+        {
+          "name": "Catálogo público",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_producto}}/api/v1/productos",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catálogo como lista\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escritura sin token",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_producto}}/api/v1/productos",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Perfume de prueba Postman\",\n  \"categoria\": \"Unisex\",\n  \"precio\": 19990,\n  \"stock\": 10,\n  \"imagen\": \"https://example.invalid/perfume.png\",\n  \"descripcion\": \"Producto temporal de prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escritura como cliente",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_producto}}/api/v1/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Perfume de prueba Postman\",\n  \"categoria\": \"Unisex\",\n  \"precio\": 19990,\n  \"stock\": 10,\n  \"imagen\": \"https://example.invalid/perfume.png\",\n  \"descripcion\": \"Producto temporal de prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear producto",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_producto}}/api/v1/productos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Perfume de prueba Postman\",\n  \"categoria\": \"Unisex\",\n  \"precio\": 19990,\n  \"stock\": 10,\n  \"imagen\": \"https://example.invalid/perfume.png\",\n  \"descripcion\": \"Producto temporal de prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code < 300) pm.environment.set(\"producto_id\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar producto",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar producto",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Perfume de prueba Postman\",\n  \"categoria\": \"Unisex\",\n  \"precio\": 19990,\n  \"stock\": 12,\n  \"imagen\": \"https://example.invalid/perfume.png\",\n  \"descripcion\": \"Producto temporal de prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cantidad inválida",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}/stock/descontar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stock insuficiente",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}/stock/descontar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 99\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Descontar una unidad",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}/stock/descontar",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Quedan 11 unidades\", () => pm.expect(pm.response.json().stock).to.eql(11));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "Crear sin token",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productoId\": {{producto_id}},\n      \"cantidad\": 2\n    }\n  ],\n  \"entrega\": {\n    \"nombre\": \"Cliente de prueba\",\n    \"telefono\": \"000000000\",\n    \"region\": \"Metropolitana\",\n    \"comuna\": \"Santiago\",\n    \"direccion\": \"Dirección de prueba\"\n  },\n  \"metodoPago\": \"Prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cantidad inválida",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productoId\": {{producto_id}},\n      \"cantidad\": 0\n    }\n  ],\n  \"entrega\": {\n    \"nombre\": \"Cliente de prueba\",\n    \"telefono\": \"000000000\",\n    \"region\": \"Metropolitana\",\n    \"comuna\": \"Santiago\",\n    \"direccion\": \"Dirección de prueba\"\n  },\n  \"metodoPago\": \"Prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stock insuficiente",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productoId\": {{producto_id}},\n      \"cantidad\": 99\n    }\n  ],\n  \"entrega\": {\n    \"nombre\": \"Cliente de prueba\",\n    \"telefono\": \"000000000\",\n    \"region\": \"Metropolitana\",\n    \"comuna\": \"Santiago\",\n    \"direccion\": \"Dirección de prueba\"\n  },\n  \"metodoPago\": \"Prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear pedido pendiente",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productoId\": {{producto_id}},\n      \"cantidad\": 2\n    }\n  ],\n  \"entrega\": {\n    \"nombre\": \"Cliente de prueba\",\n    \"telefono\": \"000000000\",\n    \"region\": \"Metropolitana\",\n    \"comuna\": \"Santiago\",\n    \"direccion\": \"Dirección de prueba\"\n  },\n  \"metodoPago\": \"Prueba\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code < 300) pm.environment.set(\"pedido_id\", pm.response.json().id);",
+                  "pm.test(\"Estado pendiente\", () => pm.expect(pm.response.json().estado).to.eql(\"PENDIENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar pedido propio",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_pedido}}/api/v1/pedidos/{{pedido_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pedidos propios",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_pedido}}/api/v1/pedidos/mis-pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listado general denegado a cliente",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listado general de administrador",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_pedido}}/api/v1/pedidos",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmación denegada a cliente",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url_pedido}}/api/v1/pedidos/{{pedido_id}}/confirmacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_cliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar pedido",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url_pedido}}/api/v1/pedidos/{{pedido_id}}/confirmacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado confirmado\", () => pm.expect(pm.response.json().estado).to.eql(\"CONFIRMADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repetir confirmación",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url_pedido}}/api/v1/pedidos/{{pedido_id}}/confirmacion",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar descuento único",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Quedan 9 unidades\", () => pm.expect(pm.response.json().stock).to.eql(9));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Limpiar producto temporal",
+      "item": [
+        {
+          "name": "Eliminar producto",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Producto eliminado",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url_producto}}/api/v1/productos/{{producto_id}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
