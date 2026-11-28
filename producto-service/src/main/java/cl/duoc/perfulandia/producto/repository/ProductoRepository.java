@@ -1,17 +1,30 @@
 
 package cl.duoc.perfulandia.producto.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import cl.duoc.perfulandia.producto.model.Producto;
 
-// Repositorio encargado del acceso a los productos en H2.
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    // Comprueba si ya existe un perfume con ese nombre.
-    // Evita duplicar productos durante la carga inicial.
+    // Evitar duplicados durante la carga inicial.
     boolean existsByNombre(String nombre);
 
+    // Descontar stock de forma atómica.
+    @Modifying
+    @Query("""
+        UPDATE Producto p
+        SET p.stock = p.stock - :cantidad
+        WHERE p.id = :productoId
+          AND p.stock >= :cantidad
+        """)
+    int descontarStock(
+            @Param("productoId") Long productoId,
+            @Param("cantidad") Integer cantidad
+    );
 }
