@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -18,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
 import lombok.RequiredArgsConstructor;
 
 import cl.duoc.perfulandia.producto.dto.ProductoCreateRequest;
@@ -25,24 +29,15 @@ import cl.duoc.perfulandia.producto.dto.ProductoUpdateRequest;
 import cl.duoc.perfulandia.producto.dto.ProductoResponse;
 import cl.duoc.perfulandia.producto.service.ProductoService;
 
-
-// Indica que esta clase recibe solicitudes HTTP
-// y devuelve respuestas en formato JSON.
+// PERFULANDIA - CONTROLADOR DE PRODUCTOS
 @RestController
-
-// Define la ruta principal de los productos.
 @RequestMapping("/api/v1/productos")
-
-// Lombok genera el constructor para inyectar el servicio.
 @RequiredArgsConstructor
 public class ProductoController {
 
-    // Servicio encargado de la lógica de negocio.
     private final ProductoService productoService;
 
-
     // 1. LISTAR TODOS LOS PRODUCTOS
-    // GET http://localhost:8081/api/v1/productos
     @GetMapping
     public ResponseEntity<List<ProductoResponse>> listarProductos() {
 
@@ -52,9 +47,7 @@ public class ProductoController {
         return ResponseEntity.ok(productos);
     }
 
-
     // 2. BUSCAR PRODUCTO POR ID
-    // GET http://localhost:8081/api/v1/productos/1
     @GetMapping("/{id}")
     public ResponseEntity<ProductoResponse> buscarPorId(
             @PathVariable Long id) {
@@ -65,9 +58,7 @@ public class ProductoController {
         return ResponseEntity.ok(producto);
     }
 
-
     // 3. CREAR PRODUCTO
-    // POST http://localhost:8081/api/v1/productos
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     public ResponseEntity<ProductoResponse> crearProducto(
@@ -81,9 +72,7 @@ public class ProductoController {
                 .body(productoCreado);
     }
 
-
     // 4. ACTUALIZAR PRODUCTO
-    // PUT http://localhost:8081/api/v1/productos/1
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponse> actualizarProducto(
@@ -96,9 +85,7 @@ public class ProductoController {
         return ResponseEntity.ok(productoActualizado);
     }
 
-
     // 5. ELIMINAR PRODUCTO
-    // DELETE http://localhost:8081/api/v1/productos/1
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(
@@ -107,5 +94,30 @@ public class ProductoController {
         productoService.eliminarProducto(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    // 6. DESCONTAR STOCK DE UN PRODUCTO
+    // Debe restringirse a una operación autorizada de inventario.
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/{id}/stock/descontar")
+    public ResponseEntity<ProductoResponse> descontarStock(
+            @PathVariable Long id,
+            @Valid @RequestBody DescontarStockRequest request) {
+
+        ProductoResponse actualizado =
+                productoService.descontarStock(
+                        id,
+                        request.cantidad()
+                );
+
+        return ResponseEntity.ok(actualizado);
+    }
+
+    // DATOS NECESARIOS PARA DESCONTAR STOCK
+    public record DescontarStockRequest(
+            @NotNull(message = "La cantidad es obligatoria.")
+            @Positive(message = "La cantidad debe ser mayor que cero.")
+            Integer cantidad
+    ) {
     }
 }
